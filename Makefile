@@ -1,17 +1,17 @@
 CC=gcc
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -I/opt/picoscope/include
 SRC=src
 OBJ=obj
 SRCS=$(wildcard $(SRC)/*.c)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 BIN=bin
-EXE=$(BIN)/motor-rework-poc
+EXE=$(BIN)/motor-control-cli
 
 
 all: $(EXE)
 
 $(EXE): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $@ -lm -pthread -lncurses
+	$(CC) $(CFLAGS) $(OBJS) -o $@ -lm -pthread -lncurses -L/opt/picoscope/lib/ -lpicohrdl
 
 $(OBJ)/%.o: $(SRC)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@

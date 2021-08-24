@@ -11,14 +11,27 @@ typedef uint32_t BAUD_RATE;
 #define SYNC_SIGNAL 0xA5CAFEA5
 #define SYNC_BYTE 0xA5
 #define MOTOR_TYPE 1 // configurable to support the development motor, which is type `0`
+#define MOTOR_STEPS_PER_REVOLUTION 9216
+#define MOTOR_BACKLASH_COMPENSATION 1.166
 
+#define LIFECYCLE_RATE_OF_ROTATION 20
 #define RATE_OF_ROTATION 10
 #define PERFORMANCE_RATE_OF_ROTATION 5
+#define LIFECYCLE_CYCLE_ITERATION 200
+
+#define PERFORMANCE_HOLD 1000000  // usec
+#define DELAY_BUFFER_FACTOR 1.08
+
+#define LIFECYCLE_DISPLACEMENT 60
 #define LWIR_DROT 58.58
 #define MWIR_DROT -56.55
 #define SWIR_DROT -60.19
 #define VIS_DROT 60.18
-#define CW_BUMP 66.01
-#define CCW_BUMP -66.01
+#define CW_BUMP 67.791
+#define CCW_BUMP -67.791
+// #define CW_BUMP 65.81
+// #define CCW_BUMP -65.81
+
+#define BACKLASH 10
 
 #endif

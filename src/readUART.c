@@ -14,12 +14,13 @@
 static uint32_t sequence = 0x00;
 static uint32_t encoder = 0x00;
 static uint32_t index = 0x00;
+static uint32_t temp = 2;
 static uint8_t count = 0;
 
 
-uint32_t compareFeedback(uint32_t encoderData) {
+uint32_t compareFeedback(uint32_t encoderData, int processID) {
   if (encoderData > 0x12000) {
-    encoderData = 0xFFFFFFFF - encoderData;
+    encoderData = -encoderData;
   }
   return encoderData;
 }
@@ -48,8 +49,6 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
         case SYNC_SIGNAL:
           switch (count) {
             case 0:
-              fprintf(telemetry_csv, "Position:\t");
-              fflush(telemetry_csv);
               encoder += (uint32_t)buffer[0];
               count += 1;
               break;
@@ -62,8 +61,13 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
             case 3:
               encoder = encoder<<8;
               encoder += (uint32_t)buffer[0];
+              if (stateptr->currentPosition != 200000) {
+                temp = stateptr->currentPosition;
+              }
               stateptr->currentPosition = encoder;
-              fprintf(telemetry_csv, "Raw\t\t%8x\t\tProcessed\t\t%8x,\t\t", encoder, compareFeedback(encoder));
+              stateptr->lastPosition = temp;
+              temp = 100000;
+              fprintf(telemetry_csv, "%8x,\t%8x,\t", encoder, compareFeedback(encoder, 0));
               fflush(telemetry_csv);
               encoder = 0x00;
               count += 1;
@@ -83,8 +87,13 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
             case 7:
               index = index<<8;
               index += (uint32_t)buffer[0];
+              if (stateptr->currentIndex != 200000) {
+                temp = stateptr->currentIndex;
+              }
               stateptr->currentIndex = index;
-              fprintf(telemetry_csv, "Raw\t\t%8x\t\tProcessed\t\t%8x\n", index, compareFeedback(index));
+              stateptr->lastIndex = temp;
+              temp = 100000;
+              fprintf(telemetry_csv, "%8x,\t%8x\n", index, compareFeedback(index, 0));
               fflush(telemetry_csv);
               index = 0x00;
               sequence = 0x00;
@@ -121,22 +130,16 @@ void *readEncoderFeedback(void *state) {
   strftime(stateptr->filename, sizeof(stateptr->filename), "data/%Y%m%d_%H%M%S_DATA.csv", timenow);
 
   stateptr->fp = fopen(stateptr->filename, "w+");
-  // int fd = openSerialPort(DEVICE, BAUD_RATE);
-  //   if(fd < 0) { 
-  //     return; 
-  //   }
-
 
   for (;;) {
   uint8_t buffer[4] = {0x00};
     switch(stateptr->readState) {
       case 1:
         readPort(stateptr, buffer, 1, stateptr->fp);
-        // readPort(stateptr->fd, buffer, 1, fp);
         break;
       case 0:
         closeFile(stateptr->fp);
-        close(*stateptr->fd);
+        // close(*stateptr->fd);
         return NULL;
     }
   } 

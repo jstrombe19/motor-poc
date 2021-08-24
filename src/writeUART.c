@@ -53,7 +53,7 @@ void *convertInputToUartValues(void *state) { // invoke with 1 for Honeybee; inv
       revolution is necessary - the change in angular position divided by 360 degrees - multiplied by the total number
       of steps available at the output shaft that equate to a single revolution
     */
-    int numberOfSteps                   = abs(round(stateptr->changeInAngularPosition / 360.0 * outputNumberStepsPerRevolution));
+    int numberOfSteps                   = abs(round((stateptr->changeInAngularPosition) / 360.0 * outputNumberStepsPerRevolution));
 
     stateptr->stepDelay = be32toh(stepDelay);
     stateptr->numberOfSteps = be32toh(numberOfSteps);

@@ -7,12 +7,17 @@
   {
     uint8_t syncStatus;
     uint8_t motorState;
-    uint8_t currentPosition;
-    uint8_t currentIndex;
+    uint32_t currentPosition;
+    uint32_t currentIndex;
+    uint32_t homePosition;
+    uint32_t homeIndex;
+    uint32_t lastPosition;
+    uint32_t lastIndex;
     uint8_t currentDirection;
     long currentTime;
     long startTime;
-    long motorMovementStartTime;
+    time_t motorMovementStartTime;
+    time_t motorMovementElapsedTime;
     uint32_t movementDelay;
     uint8_t applicationActive;
     uint8_t writeState;
@@ -20,6 +25,7 @@
     char filename[30];
     int * fd;
     FILE * fp;
+    FILE * pfp;
     int desiredOutRate;
     int directionOfRotation;
     float changeInAngularPosition;
@@ -30,11 +36,18 @@
     uint32_t numberOfSteps;
     uint32_t stepDelay;
     uint8_t commandSequence[15];
-    char log[256];
+    char *log;
     int delayCountUsec;
     int motorProcessIdentifier;
+    int motorMovementPending;
+    int performanceCycleCount;
+    int cycleCount;
+    int16_t picoDevice;
+    int newFileQueue;
+
   };
 
+  // void *restartReadLog(void *state);
   // void *updateStateLog(void *state);
 
 

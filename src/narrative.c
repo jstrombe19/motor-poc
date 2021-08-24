@@ -35,8 +35,9 @@ struct timeValues {
     long end;
   };
 
-void finish(int sig)
+void finish(struct applicationState *state, int sig)
 {
+  close(*state->fd);
   delwin(win);
   endwin();
   exit(sig);
@@ -54,6 +55,41 @@ void *cycleone(void *state)
     stateptr->currentDirection = 1;
   }
   return NULL;
+}
+
+
+void *restartReadLog(void *state) {
+  struct applicationState *stateptr = (void *)state;
+  stateptr->readState = 0;
+  pthread_join(readUARTThread, NULL);
+  stateptr->readState = 1;
+  pthread_create(&readUARTThread, NULL, readEncoderFeedback, (void*)state);
+  stateptr->newFileQueue = 0;
+  // usleep(100000);
+  return NULL;
+}
+
+// int displayCurrentPosition(void *state) {
+//   struct applicationState *stateptr = (void *)state;
+//   uint32_t temp;
+//   if ((stateptr->currentPosition > stateptr->lastPosition && stateptr->currentDirection == 3) || 
+//   (stateptr->currentPosition < stateptr->lastPosition && stateptr->currentDirection == 1)) {
+//     temp = (-1) * stateptr->currentPosition;
+//   } else {
+//     temp = stateptr->currentPosition;
+//   }
+//   return temp;
+// }
+
+int displayDeltas(void *state, int processID) {
+  struct applicationState *stateptr = (void *)state;
+  if (processID == 1) {
+    return abs(stateptr->currentPosition - stateptr->homePosition);
+  } else if (processID == 2) {
+    return abs(stateptr->currentIndex - stateptr->homeIndex);
+  } else {
+    return 0;
+  }
 }
 
 const char *displayDROT(uint8_t *rawDROT)
@@ -85,6 +121,8 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
 {
   uint8_t row;
   uint8_t col;
+
+  // state->motorMovementElapsedTime = difftime(time(NULL), state->motorMovementStartTime);
   
   gettimeofday(&timeVals->after, NULL);
   timeVals->end = (long)timeVals->after.tv_sec * 1000 + (long)timeVals->after.tv_usec / 1000;
@@ -104,27 +142,30 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
   mvwprintw(win, row++, col, "UART Port: %8s @ %8d baud", PORT, BAUD_RATE);
   row++;
   mvwprintw(win, row++, col, "Motor Status: %2d", state->motorState);
-  row += 2;
+  mvwprintw(win, row++, col, "Cycle Count: %5d", state->cycleCount);
+  mvwprintw(win, row++, col, "Performance Cycle Count: %5d", state->performanceCycleCount);
+  row += 1;
   mvwprintw(win, row++, col, "Select the desired process:");
   mvwprintw(win, row++, col, "[1] - Start logging data");
-  mvwprintw(win, row++, col, "[2] - Adjust calibrator arm position");
-  mvwprintw(win, row++, col, "[3] - Execute calibrator arm performance maneuver");
-  mvwprintw(win, row++, col, "[4] - Execute calibrator arm function check");
+  mvwprintw(win, row++, col, "[2] - Return to home");
+  mvwprintw(win, row++, col, "[3] - Execute single calibrator arm performance maneuver");
+  mvwprintw(win, row++, col, "[4] - Execute single calibrator arm function check");
   mvwprintw(win, row++, col, "[5] - ABORT CURRENT MANEUVER");
   mvwprintw(win, row++, col, "[6] - Complete test operations and exit");
   mvwprintw(win, row++, col, "[7] - Reset encoder position and index");
-  row += 6;
+  mvwprintw(win, row++, col, "[L] - Execute Lifecycle Test Operations");
+  row += 3;
   mvwprintw(win, row++, col, "Direction of Rotation: %18s", displayDROT(&state->currentDirection));
-  mvwprintw(win, row++, col, "Start Encoder: %8d | Start Index: %8d", 0x01, 0x01);
-  mvwprintw(win, row++, col, "Encoder: %8d (Delta %8d) | Index: %8d (Delta %8d", 0x01, 0x01, 0x01, 0x01);
+  mvwprintw(win, row++, col, "Start Encoder: %8d | Start Index: %8d", state->homePosition, state->homeIndex);
+  mvwprintw(win, row++, col, "Encoder: %8d (Delta %8d) | Index: %8d (Delta %8d)", state->currentPosition, displayDeltas(state, 1), state->currentIndex, displayDeltas(state, 2));
   row += 2;
   mvwprintw(win, row++, col, "----------------------------------------------LOG---------------------------------------------");
-  for(int i = 0; i < 4; i++) {
-    if(strlen(&state->log[i]) != 0){
-      mvwprintw(win, row++, col, "%s", state->log[i]);
-    }
-  }
-
+  // for(int i = 0; i < 4; i++) {
+  //   if(strlen(&state->log[i]) != 0){
+  //     mvwprintw(win, row++, col, "%s", state->log[i]);
+  //   }
+  // }
+  mvwprintw(win, row++, col, "%s", state->log);
   return;
 }
 
@@ -135,7 +176,6 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
   time_t now = time(NULL);
   timenow = localtime(&now);
   strftime(fullStartTime, sizeof(fullStartTime), "%Y %m %d at %H %M %S", timenow);
-
 
   gettimeofday(&timeVals->before, NULL);
   timeVals->start = (long)timeVals->before.tv_sec * 1000 + (long)timeVals->before.tv_usec / 1000;
@@ -163,6 +203,15 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
   while (state->applicationActive)
   {
     makeDetail(state, timeVals);
+    if (state->currentPosition != state->lastPosition && 1) {
+      state->motorState = 2;
+    } else if (state->currentPosition == state->lastPosition && 1) {
+      state->motorState = 0;
+    }
+
+    if (state->cycleCount > 0 && state->cycleCount % LIFECYCLE_CYCLE_ITERATION == 0 && state->newFileQueue == 1) {
+      restartReadLog(state);
+    }
 
     ch = wgetch(win);
     switch (ch)
@@ -170,51 +219,45 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
     case '1':   // start logging data
       state->readState = 1;
       pthread_create(&readUARTThread, NULL, readEncoderFeedback, (void*)state);
+      pthread_create(&writeUARTThread, NULL, motorMoveMonitor, (void *)state);
       encoderOnline((void *)state);
+
       break;
-    case '2':   // adjust calibrator arm position
-      state->motorProcessIdentifier = 4;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      delay(state->movementDelay);
-      pthread_join(writeUARTThread, NULL);
+    case '2':   // return to home
+      state->motorMovementPending = 4;
       break;
-    case '3':   // execute calibrator arm performance maneuver 
-      state->motorProcessIdentifier = 5;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
-      state->motorProcessIdentifier = 6;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
-      state->motorProcessIdentifier = 7;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
+      // state->motorProcessIdentifier = 8;
+      // strcpy(state->log, "Please enter the desired angular velocity in degrees per second");
+      // scanf("%d", &state->desiredOutRate);
+      // strcpy(state->log, "How far do you want to rotate (facing calibrator arm, CW is positive)?");
+      // wrefresh(win);
+      // scanf("%f", &state->changeInAngularPosition);
+      // pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
+      // delay(state->movementDelay);
+      // pthread_join(writeUARTThread, NULL);
+      break;
+    case '3':   // execute calibrator arm performance maneuver
+      state->motorMovementPending = 1;
       break;
     case '4':   // execute calibrator arm function check
-    state->motorProcessIdentifier = 1;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
-      state->motorProcessIdentifier = 2;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
-      state->motorProcessIdentifier = 3;
-      pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      while (state->motorState != 0) {}
-      pthread_join(writeUARTThread, NULL);
+      state->motorMovementPending = 2;
       break;
     case '5':   // ABORT current maneuver
       encoderOnline((void *)state);
       break;
     case '6':   // complete test operations and exit
       state->readState = 0;
-      finish(1);
+      free(state->log);
+      finish(state, 1);
       break;
     case'7':
       resetEncoder((void *)state);
+      break;
+    case 'L':
+      state->motorMovementPending = 5;
+      break;
+    case 'l':
+      state->motorMovementPending = 0;
       break;
     default:
       break;
@@ -227,8 +270,10 @@ int main()
   struct applicationState state = {
     .syncStatus = 0,
     .motorState = 0,
-    .currentPosition = 0,
-    .currentIndex = 0,
+    .currentPosition = 200000,
+    .currentIndex = 200000,
+    .lastPosition = 100000,
+    .lastIndex = 100000,
     .currentDirection = 0,
     .currentTime = 0,
     .startTime = 0,
@@ -244,9 +289,15 @@ int main()
     .phaseStepSize = 0x0000,
     .numberOfSteps = 0x00000000,
     .stepDelay = 0x00000000,
-    .commandSequence = {SYNC_BYTE, SYNC_BYTE}
+    .commandSequence = {SYNC_BYTE, SYNC_BYTE},
+    .log = malloc(256),
+    .performanceCycleCount = 0,
+    .cycleCount = 0,
+    .newFileQueue = 0
   };
 
+
+  strcpy(state.log, "");
   struct timeValues timeVals;
 
   int fd = openSerialPort(DEVICE, BAUD_RATE);
