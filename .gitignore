@@ -5,3 +5,5 @@
 /obj/*
 
 /src/cycleone*
+
+.vscode/*
