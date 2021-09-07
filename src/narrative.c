@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 #include "../inc/config.h"
-#include "./cycleone.h"
+// #include "./cycleone.h"
 #include "./narrative.h"
 #include "./serial.h"
 #include "./readUART.h"
