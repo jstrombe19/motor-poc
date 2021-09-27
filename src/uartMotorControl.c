@@ -196,11 +196,8 @@ void *moveMotor(void *state) {
       stateptr->changeInAngularPosition = (CW_BUMP - CCW_BUMP) * BUMP_AMPLIFIER;
       break;
     case 7:
-    // to-test: modify the changeInAngularPosition to be calculated based off of the min and max values for position,
-    // corrected back from steps to angular displacement
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
       splitHardStops((void *)stateptr);
-      // stateptr->changeInAngularPosition = -CW_BUMP;
       break;
     case 8:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
