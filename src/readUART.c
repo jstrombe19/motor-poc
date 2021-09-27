@@ -109,7 +109,7 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
                 ),
                 stateptr->directionOfRotation,
                 stateptr->changeInAngularPosition,
-                stateptr->numberOfSteps,
+                abs(stateptr->numberOfSteps),
                 stateptr->performanceCycleCount,
                 stateptr->cycleCount
               );
