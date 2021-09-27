@@ -58,9 +58,7 @@ void *calculateOffset(void *state) {
     stateptr->changeInAngularPosition = (stateptr->currentPosition - stateptr->homePosition) / 204.8;
     stateptr->changeInAngularPosition = stateptr->changeInAngularPosition * (-1);
   }
-  fprintf(stateptr->fp, "\n\nCurrent Position: %x\nHome Position: %x\nSteps for Change: %f\n\n\n", 
-    stateptr->currentPosition, stateptr->homePosition, stateptr->changeInAngularPosition);
-  fflush(stateptr->fp);
+
 
 
   // if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition > 0x16000) {
@@ -77,6 +75,22 @@ void *calculateOffset(void *state) {
   //   stateptr->changeInAngularPosition = (tempHome - tempCurrent) / 204.8;
   // }
   return NULL;
+}
+
+uint32_t correctPositionValue(uint32_t positionValue) {
+  if (positionValue > 0x16000) {
+    positionValue = 0xffffffff - positionValue;
+  }
+  return positionValue;
+}
+
+void splitHardStops(void *state) {
+  struct applicationState *stateptr = (void *)state;
+  uint32_t tempMin = correctPositionValue(stateptr->hardStopMin);
+  uint32_t tempMax = correctPositionValue(stateptr->hardStopMax);
+
+  stateptr->changeInAngularPosition = (abs(tempMax - tempMin)) / 2 / 204.8 * (-1);
+  return;
 }
 
 
@@ -138,9 +152,6 @@ void *loadMovementCommand(void *state) {
   convertInputToUartValues((void*)stateptr);
   stateptr->loadStep = 1;
   generateUartCommand((void *)stateptr);
-  fprintf(stateptr->fp, "\n\nMOVEMENT\nDirection of Rotation: %d\nChange in Position: %f\nSteps for Change: %x\n\n\n", 
-    stateptr->directionOfRotation, stateptr->changeInAngularPosition, stateptr->numberOfSteps);
-  fflush(stateptr->fp);
   // stateptr->motorMovementStartTime = time(NULL);
   // time(stateptr->motorMovementStartTime);
   writePort(*stateptr->fd, stateptr->commandSequence, sizeof(stateptr->commandSequence));
@@ -178,15 +189,18 @@ void *moveMotor(void *state) {
       break;
     case 5:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
-      stateptr->changeInAngularPosition = CCW_BUMP;
+      stateptr->changeInAngularPosition = CCW_BUMP * BUMP_AMPLIFIER;
       break;
     case 6:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
-      stateptr->changeInAngularPosition = (CW_BUMP - CCW_BUMP);
+      stateptr->changeInAngularPosition = (CW_BUMP - CCW_BUMP) * BUMP_AMPLIFIER;
       break;
     case 7:
+    // to-test: modify the changeInAngularPosition to be calculated based off of the min and max values for position,
+    // corrected back from steps to angular displacement
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
-      stateptr->changeInAngularPosition = -CW_BUMP;
+      splitHardStops((void *)stateptr);
+      // stateptr->changeInAngularPosition = -CW_BUMP;
       break;
     case 8:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
@@ -231,9 +245,11 @@ void *performanceManeuver(void *state) {
   stateptr->motorMovementStartTime = time(NULL); 
   stateptr->motorProcessIdentifier = 5;
   moveMotor((void *)stateptr);
+  stateptr->hardStopMin = stateptr->currentPosition;
   stateptr->motorMovementStartTime = time(NULL); 
   stateptr->motorProcessIdentifier = 6;
   moveMotor((void *)stateptr);
+  stateptr->hardStopMax = stateptr->currentPosition;
   stateptr->motorMovementStartTime = time(NULL);
   stateptr->motorProcessIdentifier = 7;
   moveMotor((void *)stateptr);
