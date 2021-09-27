@@ -22,6 +22,7 @@
 WINDOW *win;
 pthread_t cycleOneThread, cycleTwoThread, readUARTThread, writeDataThread, writeUARTThread;
 static char fullStartTime[40];
+static uint32_t currentIndexDelta;
 struct timeValues {
     double starttimerawmsec;
     double starthourraw;
@@ -86,7 +87,10 @@ int displayDeltas(void *state, int processID) {
   if (processID == 1) {
     return abs(stateptr->currentPosition - stateptr->homePosition);
   } else if (processID == 2) {
-    return abs(stateptr->currentIndex - stateptr->homeIndex);
+    if (stateptr->currentIndex != stateptr->lastIndex) {
+      currentIndexDelta = abs(stateptr->currentIndex - stateptr->lastIndex);
+    }
+    return currentIndexDelta;
   } else {
     return 0;
   }
@@ -181,6 +185,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
   time_t now = time(NULL);
   timenow = localtime(&now);
   strftime(fullStartTime, sizeof(fullStartTime), "%Y %m %d at %H %M %S", timenow);
+  currentIndexDelta = 0;
 
   gettimeofday(&timeVals->before, NULL);
   timeVals->start = (long)timeVals->before.tv_sec * 1000 + (long)timeVals->before.tv_usec / 1000;
@@ -279,6 +284,8 @@ int main()
     .currentIndex = 200000,
     .lastPosition = 100000,
     .lastIndex = 100000,
+    .homePosition = 0,
+    .homeIndex = 0,
     .currentDirection = 0,
     .currentTime = "",
     .startTime = 0,
