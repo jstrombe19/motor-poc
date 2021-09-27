@@ -99,7 +99,7 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
               stateptr->currentIndex = index;
               stateptr->lastIndex = temp;
               temp = 100000;
-              fprintf(telemetry_csv, "%8d,%8d,%3d,%f,%d", 
+              fprintf(telemetry_csv, "%8d,%8d,%3d,%6f,%8d\n", 
                 index, 
                 compareIndices(
                   correctFeedback(stateptr->lastIndex, 0), 

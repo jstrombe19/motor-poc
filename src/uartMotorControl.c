@@ -89,7 +89,7 @@ void splitHardStops(void *state) {
   uint32_t tempMin = correctPositionValue(stateptr->hardStopMin);
   uint32_t tempMax = correctPositionValue(stateptr->hardStopMax);
 
-  stateptr->changeInAngularPosition = (abs(tempMax - tempMin)) / 2 / 204.8 * (-1);
+  stateptr->changeInAngularPosition = (abs(tempMax) + abs(tempMin)) / 2 / 204.8 * (-1);
   return;
 }
 
