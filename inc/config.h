@@ -27,10 +27,9 @@ typedef uint32_t BAUD_RATE;
 #define MWIR_DROT -56.55
 #define SWIR_DROT -60.19
 #define VIS_DROT 60.18
-#define CW_BUMP 67.791
-#define CCW_BUMP -67.791
-// #define CW_BUMP 65.81
-// #define CCW_BUMP -65.81
+#define CW_BUMP 65.791
+#define CCW_BUMP -65.791
+#define BUMP_AMPLIFIER 1.03
 
 #define BACKLASH 10
 

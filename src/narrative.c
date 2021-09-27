@@ -22,6 +22,7 @@
 WINDOW *win;
 pthread_t cycleOneThread, cycleTwoThread, readUARTThread, writeDataThread, writeUARTThread;
 static char fullStartTime[40];
+static uint32_t currentIndexDelta;
 struct timeValues {
     double starttimerawmsec;
     double starthourraw;
@@ -86,7 +87,10 @@ int displayDeltas(void *state, int processID) {
   if (processID == 1) {
     return abs(stateptr->currentPosition - stateptr->homePosition);
   } else if (processID == 2) {
-    return abs(stateptr->currentIndex - stateptr->homeIndex);
+    if (stateptr->currentIndex != stateptr->lastIndex) {
+      currentIndexDelta = abs(stateptr->currentIndex - stateptr->lastIndex);
+    }
+    return currentIndexDelta;
   } else {
     return 0;
   }
@@ -121,6 +125,11 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
 {
   uint8_t row;
   uint8_t col;
+
+  struct tm *timenow;
+  time_t now = time(NULL);
+  timenow = localtime(&now);
+  strftime(state->currentTime, sizeof(state->currentTime), "%Y%m%d-%H:%M:%S", timenow);
 
   // state->motorMovementElapsedTime = difftime(time(NULL), state->motorMovementStartTime);
   
@@ -176,6 +185,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
   time_t now = time(NULL);
   timenow = localtime(&now);
   strftime(fullStartTime, sizeof(fullStartTime), "%Y %m %d at %H %M %S", timenow);
+  currentIndexDelta = 0;
 
   gettimeofday(&timeVals->before, NULL);
   timeVals->start = (long)timeVals->before.tv_sec * 1000 + (long)timeVals->before.tv_usec / 1000;
@@ -224,7 +234,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
 
       break;
     case '2':   // return to home
-      state->motorMovementPending = 4;
+      state->motorMovementPending = 8;
       break;
       // state->motorProcessIdentifier = 8;
       // strcpy(state->log, "Please enter the desired angular velocity in degrees per second");
@@ -274,10 +284,13 @@ int main()
     .currentIndex = 200000,
     .lastPosition = 100000,
     .lastIndex = 100000,
+    .homePosition = 0,
+    .homeIndex = 0,
     .currentDirection = 0,
-    .currentTime = 0,
+    .currentTime = "",
     .startTime = 0,
     .motorMovementStartTime = 0,
+    .changeInAngularPosition = 0,
     .movementDelay = 0,
     .applicationActive = 1,
     .writeState = 0,
@@ -293,7 +306,9 @@ int main()
     .log = malloc(256),
     .performanceCycleCount = 0,
     .cycleCount = 0,
-    .newFileQueue = 0
+    .newFileQueue = 0,
+    .hardStopMin = 0,
+    .hardStopMax = 0
   };
 
 

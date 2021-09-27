@@ -14,7 +14,7 @@
     uint32_t lastPosition;
     uint32_t lastIndex;
     uint8_t currentDirection;
-    long currentTime;
+    char currentTime[80];
     long startTime;
     time_t motorMovementStartTime;
     time_t motorMovementElapsedTime;
@@ -44,6 +44,8 @@
     int cycleCount;
     int16_t picoDevice;
     int newFileQueue;
+    uint32_t hardStopMin;
+    uint32_t hardStopMax;
 
   };
 

@@ -18,11 +18,21 @@ static uint32_t temp = 2;
 static uint8_t count = 0;
 
 
-uint32_t compareFeedback(uint32_t encoderData, int processID) {
+uint32_t correctFeedback(uint32_t encoderData, int processID) {
   if (encoderData > 0x12000) {
     encoderData = -encoderData;
   }
   return encoderData;
+}
+
+uint32_t compareIndices(uint32_t previousIndex, uint32_t currentIndex) {
+  uint32_t indexDifference = 0;
+  if ((previousIndex < 0 && currentIndex > 0) || (previousIndex > 0 && currentIndex < 0)) {
+    indexDifference = abs(currentIndex) + abs(previousIndex);
+  } else {
+    indexDifference = abs(currentIndex - previousIndex);
+  }
+  return indexDifference;
 }
 
 #define SYNC_SIGNAL 0xA5CAFEA5
@@ -67,14 +77,12 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
               stateptr->currentPosition = encoder;
               stateptr->lastPosition = temp;
               temp = 100000;
-              fprintf(telemetry_csv, "%8x,\t%8x,\t", encoder, compareFeedback(encoder, 0));
+              fprintf(telemetry_csv, "%17s,%8d,", stateptr->currentTime, encoder);
               fflush(telemetry_csv);
               encoder = 0x00;
               count += 1;
               break;
             case 4:
-              fprintf(telemetry_csv, "Index: ");
-              fflush(telemetry_csv);
               index += (uint32_t)buffer[0];
               count += 1;
               break;
@@ -93,7 +101,18 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
               stateptr->currentIndex = index;
               stateptr->lastIndex = temp;
               temp = 100000;
-              fprintf(telemetry_csv, "%8x,\t%8x\n", index, compareFeedback(index, 0));
+              fprintf(telemetry_csv, "%8d,%8d,%3d,%6f,%8d,%4d,%6d\n", 
+                index, 
+                compareIndices(
+                  correctFeedback(stateptr->lastIndex, 0), 
+                  correctFeedback(stateptr->currentIndex, 0)
+                ),
+                stateptr->directionOfRotation,
+                stateptr->changeInAngularPosition,
+                abs(stateptr->numberOfSteps),
+                stateptr->performanceCycleCount,
+                stateptr->cycleCount
+              );
               fflush(telemetry_csv);
               index = 0x00;
               sequence = 0x00;
@@ -130,6 +149,9 @@ void *readEncoderFeedback(void *state) {
   strftime(stateptr->filename, sizeof(stateptr->filename), "data/%Y%m%d_%H%M%S_DATA.csv", timenow);
 
   stateptr->fp = fopen(stateptr->filename, "w+");
+
+  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,INDEX_RAW,INDEX_DELTA,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
+  fflush(stateptr->fp);
 
   for (;;) {
   uint8_t buffer[4] = {0x00};
