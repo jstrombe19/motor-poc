@@ -26,9 +26,11 @@ uint32_t correctFeedback(uint32_t encoderData, int processID) {
 }
 
 uint32_t compareIndices(uint32_t previousIndex, uint32_t currentIndex) {
-  uint32_t indexDifference = abs(currentIndex - previousIndex);
-  if (currentIndex < previousIndex) {
-    indexDifference *= (-1);
+  uint32_t indexDifference = 0;
+  if ((previousIndex < 0 && currentIndex > 0) || (previousIndex > 0 && currentIndex < 0)) {
+    indexDifference = abs(currentIndex) + abs(previousIndex);
+  } else {
+    indexDifference = abs(currentIndex - previousIndex);
   }
   return indexDifference;
 }
@@ -75,7 +77,7 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
               stateptr->currentPosition = encoder;
               stateptr->lastPosition = temp;
               temp = 100000;
-              fprintf(telemetry_csv, "%17s,%8d,%8d,", stateptr->currentTime, encoder, correctFeedback(encoder, 0));
+              fprintf(telemetry_csv, "%17s,%8d,", stateptr->currentTime, encoder);
               fflush(telemetry_csv);
               encoder = 0x00;
               count += 1;
@@ -148,7 +150,7 @@ void *readEncoderFeedback(void *state) {
 
   stateptr->fp = fopen(stateptr->filename, "w+");
 
-  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,POSITION_CLEAN,INDEX_RAW,INDEX_CLEAN,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
+  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,INDEX_RAW,INDEX_DELTA,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
   fflush(stateptr->fp);
 
   for (;;) {
