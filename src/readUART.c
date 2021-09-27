@@ -146,7 +146,7 @@ void *readEncoderFeedback(void *state) {
 
   stateptr->fp = fopen(stateptr->filename, "w+");
 
-  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,POSITION_CLEAN,INDEX_RAW,INDEX_CLEAN,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS");
+  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,POSITION_CLEAN,INDEX_RAW,INDEX_CLEAN,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS\n");
   fflush(stateptr->fp);
 
   for (;;) {
