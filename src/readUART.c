@@ -99,7 +99,7 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
               stateptr->currentIndex = index;
               stateptr->lastIndex = temp;
               temp = 100000;
-              fprintf(telemetry_csv, "%8d,%8d,%3d,%6f,%8d\n", 
+              fprintf(telemetry_csv, "%8d,%8d,%3d,%6f,%8d,%4d,%6d\n", 
                 index, 
                 compareIndices(
                   correctFeedback(stateptr->lastIndex, 0), 
@@ -107,7 +107,9 @@ ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t siz
                 ),
                 stateptr->directionOfRotation,
                 stateptr->changeInAngularPosition,
-                stateptr->numberOfSteps
+                stateptr->numberOfSteps,
+                stateptr->performanceCycleCount,
+                stateptr->cycleCount
               );
               fflush(telemetry_csv);
               index = 0x00;
@@ -146,7 +148,7 @@ void *readEncoderFeedback(void *state) {
 
   stateptr->fp = fopen(stateptr->filename, "w+");
 
-  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,POSITION_CLEAN,INDEX_RAW,INDEX_CLEAN,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS\n");
+  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,POSITION_CLEAN,INDEX_RAW,INDEX_CLEAN,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
   fflush(stateptr->fp);
 
   for (;;) {
