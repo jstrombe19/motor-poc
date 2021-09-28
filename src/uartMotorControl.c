@@ -253,6 +253,7 @@ void *performanceManeuver(void *state) {
   return NULL;
 }
 
+
 void *motorMoveMonitor(void *state) {
   struct applicationState *stateptr = (void *)state;
   while (stateptr->applicationActive) {

@@ -236,16 +236,6 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
     case '2':   // return to home
       state->motorMovementPending = 8;
       break;
-      // state->motorProcessIdentifier = 8;
-      // strcpy(state->log, "Please enter the desired angular velocity in degrees per second");
-      // scanf("%d", &state->desiredOutRate);
-      // strcpy(state->log, "How far do you want to rotate (facing calibrator arm, CW is positive)?");
-      // wrefresh(win);
-      // scanf("%f", &state->changeInAngularPosition);
-      // pthread_create(&writeUARTThread, NULL, moveMotor, (void *)state);
-      // delay(state->movementDelay);
-      // pthread_join(writeUARTThread, NULL);
-      break;
     case '3':   // execute calibrator arm performance maneuver
       state->motorMovementPending = 1;
       break;
@@ -253,6 +243,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
       state->motorMovementPending = 2;
       break;
     case '5':   // ABORT current maneuver
+      state->motorMovementPending = 0;
       encoderOnline((void *)state);
       break;
     case '6':   // complete test operations and exit
