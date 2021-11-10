@@ -143,7 +143,7 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
   mvwprintw(win, row++, col, "[6] - Complete test operations and exit");
   mvwprintw(win, row++, col, "[7] - Reset encoder position and index");
   mvwprintw(win, row++, col, "[L] - Execute Lifecycle Test Operations");
-  mvwprintw(win, row++, col, "[l] - Rotate to LWIR | [m] - Rotate to MWIR");
+  mvwprintw(win, row++, col, "[l]WIR | [m]WIR");
   row += 3;
   mvwprintw(win, row++, col, "Direction of Rotation: %18s", displayDROT(&state->currentDirection));
   mvwprintw(win, row++, col, "Start Encoder: %8d | Start Index: %8d", state->homePosition, state->homeIndex);
@@ -238,9 +238,6 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
       break;
     case 'm':
       state->motorMovementPending = 7;
-      break;
-    case 'h':
-      state->motorMovementPending = 8;
       break;
     default:
       break;
