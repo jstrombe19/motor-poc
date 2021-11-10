@@ -316,6 +316,18 @@ void *motorMoveMonitor(void *state) {
       moveMotor((void *)stateptr);
       stateptr->motorMovementPending = 0;
       break;
+    case 9:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = SWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 10:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = VIS_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
     default:
       break;
     }
