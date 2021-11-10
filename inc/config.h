@@ -23,7 +23,7 @@ typedef uint32_t BAUD_RATE;
 #define DELAY_BUFFER_FACTOR 1.00
 
 #define LIFECYCLE_DISPLACEMENT 60
-#define LWIR_DROT 58.58
+#define LWIR_DROT 56.58
 #define MWIR_DROT -56.55
 #define SWIR_DROT -60.19
 #define VIS_DROT 60.18
