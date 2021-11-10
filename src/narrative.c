@@ -99,14 +99,6 @@ const char *displayDROT(uint8_t *rawDROT)
   }
 }
 
-// void *updateStateLog(void *state) {
-//   struct applicationState *stateptr = (void *)state;
-//   stateptr->log[3] = stateptr->log[2];
-//   stateptr->log[2] = stateptr->log[1];
-//   stateptr->log[1] = stateptr->log[0];
-//   stateptr->log[0] = *"";
-//   return NULL;
-// }
 
 void makeDetail(struct applicationState *state, struct timeValues *timeVals)
 {
@@ -157,11 +149,6 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
   mvwprintw(win, row++, col, "Encoder: %8d (Delta %8d) | Index: %8d (Delta %8d)", state->currentPosition, displayDeltas(state, 1), state->currentIndex, displayDeltas(state, 2));
   row += 2;
   mvwprintw(win, row++, col, "----------------------------------------------LOG---------------------------------------------");
-  // for(int i = 0; i < 4; i++) {
-  //   if(strlen(&state->log[i]) != 0){
-  //     mvwprintw(win, row++, col, "%s", state->log[i]);
-  //   }
-  // }
   mvwprintw(win, row++, col, "%s", state->log);
   return;
 }

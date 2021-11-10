@@ -34,8 +34,8 @@ FUNCTIONAL_CYCLE_COUNT
 These data identifiers are also included at the top of each file as headings. In addition to these housekeeping updates, the algorithm used to calculate the *home* position from the hard stops was updated to store the encoder position of each hard stop after coming in contact with it and holding for the pre-defined 1 second delay. These are then used to calculate the maximum possible movement and find half the distance, then convert it from steps into degrees by dividing the halved distance by 204.8 (as there are 2048 encoder position counts per every 10 degrees of rotation).
 
 #### additional items to develop
-- the algorithm to find home from hard stops currently assumes that both hard stops are contacted and does not defensively account for the possibility that one or both was not due to some obstruction or an extreme starting position that prevented the original CCW movement from reaching the CCW hard stop
-- this needs to be addressed by adding an overarching watcher that preemptively cuts the existing movement command based on encoder position feedback (which will also reduce the wear on the hard stops by cutting the movement of the motor earlier than is currently explicitly defined)
-- once this is in place, the original movement commands for the homing sequence must be updated to originally tell the motor to move beyond the maximum possible angular displacement, thereby guaranteeing contact with the first hard stop
-- this will also reduce (or altogether eliminate) the walking of the encoder position readings noted previously
+- ~~the algorithm to find home from hard stops currently assumes that both hard stops are contacted and does not defensively account for the possibility that one or both was not due to some obstruction or an extreme starting position that prevented the original CCW movement from reaching the CCW hard stop~~
+- ~~this needs to be addressed by adding an overarching watcher that preemptively cuts the existing movement command based on encoder position feedback (which will also reduce the wear on the hard stops by cutting the movement of the motor earlier than is currently explicitly defined)~~
+- ~~once this is in place, the original movement commands for the homing sequence must be updated to originally tell the motor to move beyond the maximum possible angular displacement, thereby guaranteeing contact with the first hard stop~~
+- ~~this will also reduce (or altogether eliminate) the walking of the encoder position readings noted previously~~
 
