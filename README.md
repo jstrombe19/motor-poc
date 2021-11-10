@@ -1,3 +1,9 @@
+# README
+
+## CONSTANTS
+**MAXIMUM ANGULAR DISPLACEMENT POSSIBLE: 131.591796875**
+**MAXIMUM ANGULAR DISPLACEMENT STEP COUNT: 26950**
+
 ## v0.1.0
 
 Data is written to a csv file identified by the date and time the collection began (in UTC). The data written is written in the following order: raw position, processed position (which adjusts the position value if it is negative), raw index, and processed index (which adjusts the index value if it is negative).
@@ -33,7 +39,13 @@ FUNCTIONAL_CYCLE_COUNT
 
 These data identifiers are also included at the top of each file as headings. In addition to these housekeeping updates, the algorithm used to calculate the *home* position from the hard stops was updated to store the encoder position of each hard stop after coming in contact with it and holding for the pre-defined 1 second delay. These are then used to calculate the maximum possible movement and find half the distance, then convert it from steps into degrees by dividing the halved distance by 204.8 (as there are 2048 encoder position counts per every 10 degrees of rotation).
 
+To protect against the possibility of missing a hard stop due to an off-nominal starting position, there has been an additional overwatch thread added which does nothing but monitor for one of two cases: 
+1) A manual abort signal coming from user input
+2) A procedural abort signal occuring during the homing sequence
+With this additional thread in place, the displacement for the first two homing sequence movements have been expanded to be greater than the known maximum angular displacement for the calibrator arm in the assembly (this value is calculated by multiplying the angular displacement from hard stop to hard stop by a statically-defined amplifier - both of which are defined in the config.h file). This currently defines the movement wait time to be equivalent to the time required to move that total displacement, which means the homing sequence takes over one full minute to execute.
+
 #### additional items to develop
+- update the hold times to start and stop based off of a flag rather than being statically defined for a given movement
 - ~~the algorithm to find home from hard stops currently assumes that both hard stops are contacted and does not defensively account for the possibility that one or both was not due to some obstruction or an extreme starting position that prevented the original CCW movement from reaching the CCW hard stop~~
 - ~~this needs to be addressed by adding an overarching watcher that preemptively cuts the existing movement command based on encoder position feedback (which will also reduce the wear on the hard stops by cutting the movement of the motor earlier than is currently explicitly defined)~~
 - ~~once this is in place, the original movement commands for the homing sequence must be updated to originally tell the motor to move beyond the maximum possible angular displacement, thereby guaranteeing contact with the first hard stop~~
