@@ -184,7 +184,7 @@ void *moveMotor(void *state) {
       splitHardStops((void *)stateptr);
       break;
     case 8:
-      stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
+      stateptr->desiredOutRate = RATE_OF_ROTATION;
       calculateOffset((void *)stateptr);
       break;
     default:
