@@ -44,6 +44,8 @@ To protect against the possibility of missing a hard stop due to an off-nominal 
 2) A procedural abort signal occuring during the homing sequence
 With this additional thread in place, the displacement for the first two homing sequence movements have been expanded to be greater than the known maximum angular displacement for the calibrator arm in the assembly (this value is calculated by multiplying the angular displacement from hard stop to hard stop by a statically-defined amplifier - both of which are defined in the config.h file). This currently defines the movement wait time to be equivalent to the time required to move that total displacement, which means the homing sequence takes over one full minute to execute.
 
+The overwatch thread homing sequence asserts that the encoder values will be reset prior to conducting a homing sequence. The reset must be completed prior to every homing sequence. Because of this requirement, the reset is invoked as part of the homing sequence execution to guarantee it occurs.
+
 #### additional items to develop
 - update the hold times to start and stop based off of a flag rather than being statically defined for a given movement
 - ~~the algorithm to find home from hard stops currently assumes that both hard stops are contacted and does not defensively account for the possibility that one or both was not due to some obstruction or an extreme starting position that prevented the original CCW movement from reaching the CCW hard stop~~

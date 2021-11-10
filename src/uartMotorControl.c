@@ -43,18 +43,6 @@ int reset_command_values(uint8_t * command) {
 
 void *calculateOffset(void *state) {
   struct applicationState *stateptr = (void *)state;
-  // uint32_t tempHome;
-  // uint32_t tempCurrent;
-  // if (stateptr->currentPosition > 0x16000) {
-  //   tempCurrent = 0xffffffff - stateptr->currentPosition;
-  // } else {
-  //   tempCurrent = stateptr->currentPosition;
-  // }
-  // if (stateptr->homePosition > 0x16000) {
-  //   tempHome = 0xffffffff - stateptr->homePosition;
-  // } else {
-  //   tempHome = stateptr->homePosition;
-  // }
 
   if (stateptr->currentPosition > 0x16000) {
     stateptr->changeInAngularPosition = (0xffffffff - stateptr->currentPosition - stateptr->homePosition) / 204.8;
@@ -63,19 +51,6 @@ void *calculateOffset(void *state) {
     stateptr->changeInAngularPosition = stateptr->changeInAngularPosition * (-1);
   }
 
-  // if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempHome - tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempHome + tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempCurrent - tempHome) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempCurrent - tempHome) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempHome + tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempHome - tempCurrent) / 204.8;
-  // }
   return NULL;
 }
 
@@ -193,7 +168,8 @@ void *moveMotor(void *state) {
       stateptr->changeInAngularPosition = -LIFECYCLE_DISPLACEMENT;
       break;
     case 4:
-      collectUserInput((void *)stateptr);
+      // collectUserInput((void *)stateptr);
+      stateptr->desiredOutRate = RATE_OF_ROTATION;
       break;
     case 5:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
@@ -243,7 +219,6 @@ void *functionalManeuver(void *state) {
   stateptr->motorProcessIdentifier = 3;
   moveMotor((void *)stateptr);
   stateptr->motorProcessIdentifier = 0;
-  stateptr->motorProcessIdentifier = 0;
   stateptr->changeInAngularPosition = 0;
   stateptr->numberOfSteps = 0;
   return NULL;
@@ -253,6 +228,7 @@ void *functionalManeuver(void *state) {
 void *performanceManeuver(void *state) {
   struct applicationState *stateptr = (void *)state;
   stateptr->homeIndex = stateptr->currentIndex;
+  resetEncoder((void *)state);
   stateptr->motorMovementStartTime = time(NULL); 
   stateptr->motorProcessIdentifier = 5;
   localCurrentPosition = stateptr->currentPosition;
@@ -322,6 +298,23 @@ void *motorMoveMonitor(void *state) {
           i++;
         }
       }
+      break;
+    case 6:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = LWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 7:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = MWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 8:
+      stateptr->motorProcessIdentifier = 8;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
       break;
     default:
       break;
