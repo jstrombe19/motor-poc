@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <pthread.h>
+
 #include "./serial.h"
 #include "./narrative.h"
 #include "./readUART.h"
@@ -20,7 +21,7 @@ static uint8_t count = 0;
 
 uint32_t correctFeedback(uint32_t encoderData, int processID) {
   if (encoderData > 0x12000) {
-    encoderData = -encoderData;
+    encoderData *= (-1);
   }
   return encoderData;
 }
@@ -42,7 +43,6 @@ uint32_t compareIndices(uint32_t previousIndex, uint32_t currentIndex) {
 // timeout or other error.
 // Returns the number of bytes successfully read into the buffer, or -1 if
 // there was an error reading.
-// ssize_t readPort(int *fd, uint8_t * buffer, size_t size, FILE * telemetry_csv) {
 ssize_t readPort(struct applicationState *stateptr, uint8_t * buffer, size_t size, FILE * telemetry_csv) {
   size_t received = 0;
 
@@ -142,6 +142,7 @@ int closeFile(FILE * telemetry_csv) {
 
 void *readEncoderFeedback(void *state) {
   struct applicationState *stateptr = (void *)state;
+  pthread_mutex_t lock;
 
   struct tm *timenow;
   time_t now = time(NULL);
@@ -150,18 +151,19 @@ void *readEncoderFeedback(void *state) {
 
   stateptr->fp = fopen(stateptr->filename, "w+");
 
-  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,INDEX_RAW,INDEX_DELTA,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
+  fprintf(stateptr->fp, "TIMESTAMP,POSITION_RAW,INDEX_RAW,INDEX_DELTA,DIRECTION_OF_ROTATION,CHANGE_IN_POSITION,CALCULATED_STEPS,CURRENT_POSITION,LAST_POSITION,PERFORMANCE_CYCLE_COUNT,FUNCTIONAL_CYCLE_COUNT\n");
   fflush(stateptr->fp);
 
   for (;;) {
   uint8_t buffer[4] = {0x00};
     switch(stateptr->readState) {
       case 1:
+        pthread_mutex_lock(&lock);
         readPort(stateptr, buffer, 1, stateptr->fp);
+        pthread_mutex_unlock(&lock);
         break;
       case 0:
         closeFile(stateptr->fp);
-        // close(*stateptr->fd);
         return NULL;
     }
   } 

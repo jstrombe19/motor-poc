@@ -46,6 +46,7 @@
     int newFileQueue;
     uint32_t hardStopMin;
     uint32_t hardStopMax;
+    int abort;
 
   };
 

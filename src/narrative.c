@@ -12,7 +12,6 @@
 #include <sys/time.h>
 
 #include "../inc/config.h"
-// #include "./cycleone.h"
 #include "./narrative.h"
 #include "./serial.h"
 #include "./readUART.h"
@@ -20,7 +19,7 @@
 #include "./uartMotorControl.h"
 
 WINDOW *win;
-pthread_t cycleOneThread, cycleTwoThread, readUARTThread, writeDataThread, writeUARTThread;
+pthread_t cycleOneThread, cycleTwoThread, readUARTThread, writeDataThread, writeUARTThread, overwatchThread;
 static char fullStartTime[40];
 static uint32_t currentIndexDelta;
 struct timeValues {
@@ -69,18 +68,6 @@ void *restartReadLog(void *state) {
   // usleep(100000);
   return NULL;
 }
-
-// int displayCurrentPosition(void *state) {
-//   struct applicationState *stateptr = (void *)state;
-//   uint32_t temp;
-//   if ((stateptr->currentPosition > stateptr->lastPosition && stateptr->currentDirection == 3) || 
-//   (stateptr->currentPosition < stateptr->lastPosition && stateptr->currentDirection == 1)) {
-//     temp = (-1) * stateptr->currentPosition;
-//   } else {
-//     temp = stateptr->currentPosition;
-//   }
-//   return temp;
-// }
 
 int displayDeltas(void *state, int processID) {
   struct applicationState *stateptr = (void *)state;
@@ -151,6 +138,7 @@ void makeDetail(struct applicationState *state, struct timeValues *timeVals)
   mvwprintw(win, row++, col, "UART Port: %8s @ %8d baud", PORT, BAUD_RATE);
   row++;
   mvwprintw(win, row++, col, "Motor Status: %2d", state->motorState);
+  mvwprintw(win, row++, col, "Motor Process ID: %2d", state->motorProcessIdentifier);
   mvwprintw(win, row++, col, "Cycle Count: %5d", state->cycleCount);
   mvwprintw(win, row++, col, "Performance Cycle Count: %5d", state->performanceCycleCount);
   row += 1;
@@ -213,11 +201,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
   while (state->applicationActive)
   {
     makeDetail(state, timeVals);
-    if (state->currentPosition != state->lastPosition && 1) {
-      state->motorState = 2;
-    } else if (state->currentPosition == state->lastPosition && 1) {
-      state->motorState = 0;
-    }
+    
 
     if (state->cycleCount > 0 && state->cycleCount % LIFECYCLE_CYCLE_ITERATION == 0 && state->newFileQueue == 1) {
       restartReadLog(state);
@@ -230,6 +214,7 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
       state->readState = 1;
       pthread_create(&readUARTThread, NULL, readEncoderFeedback, (void*)state);
       pthread_create(&writeUARTThread, NULL, motorMoveMonitor, (void *)state);
+      pthread_create(&overwatchThread, NULL, motorMovementOverwatch, (void *)state);
       encoderOnline((void *)state);
 
       break;
@@ -251,8 +236,11 @@ void interface(struct applicationState *state, struct timeValues *timeVals)
       free(state->log);
       finish(state, 1);
       break;
-    case'7':
+    case '7':
       resetEncoder((void *)state);
+      break;
+    case '8':
+      state->abort = 1;
       break;
     case 'L':
       state->motorMovementPending = 5;
@@ -271,10 +259,10 @@ int main()
   struct applicationState state = {
     .syncStatus = 0,
     .motorState = 0,
-    .currentPosition = 200000,
-    .currentIndex = 200000,
-    .lastPosition = 100000,
-    .lastIndex = 100000,
+    .currentPosition = 100000,
+    .currentIndex = 100000,
+    .lastPosition = 200000,
+    .lastIndex = 200000,
     .homePosition = 0,
     .homeIndex = 0,
     .currentDirection = 0,
@@ -299,7 +287,8 @@ int main()
     .cycleCount = 0,
     .newFileQueue = 0,
     .hardStopMin = 0,
-    .hardStopMax = 0
+    .hardStopMax = 0,
+    .abort = 0
   };
 
 
@@ -311,7 +300,7 @@ int main()
       state.fd = &fd; 
       interface(&state, &timeVals);
     } else {
-      printf("Failed to open serial port at %s, %d baud\n", DEVICE, BAUD_RATE);  
+      printf("Failed to open serial port for %s, at %d baud\n", DEVICE, BAUD_RATE);  
       return 1; 
     }
 
