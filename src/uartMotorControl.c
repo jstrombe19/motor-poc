@@ -243,6 +243,9 @@ void *functionalManeuver(void *state) {
   stateptr->motorProcessIdentifier = 3;
   moveMotor((void *)stateptr);
   stateptr->motorProcessIdentifier = 0;
+  stateptr->motorProcessIdentifier = 0;
+  stateptr->changeInAngularPosition = 0;
+  stateptr->numberOfSteps = 0;
   return NULL;
 }
 
@@ -263,6 +266,8 @@ void *performanceManeuver(void *state) {
   stateptr->motorProcessIdentifier = 7;
   moveMotor((void *)stateptr);
   stateptr->motorProcessIdentifier = 0;
+  stateptr->changeInAngularPosition = 0;
+  stateptr->numberOfSteps = 0;
   return NULL;
 }
 
