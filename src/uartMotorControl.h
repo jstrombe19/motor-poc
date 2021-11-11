@@ -10,6 +10,8 @@
   void *performanceManeuver(void *state);
   void *functionalManeuver(void *state);
   void *motorMoveMonitor(void *state);
+  void *motorMovementOverwatch(void *state);
+  void *stopMotorMovement(void *state);
   // int moveBookend(int *fd);
   // int activateMotor(int *fd);
 

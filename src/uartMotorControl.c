@@ -14,7 +14,11 @@
 #include "./writeUART.h"
 #include "./narrative.h"
 
+
 pthread_mutex_t lock;
+static uint32_t localCurrentPosition;
+
+
 
 void *collectUserInput(void *state) {
   struct applicationState *stateptr = (void *)state;
@@ -36,21 +40,9 @@ int reset_command_values(uint8_t * command) {
   return 0;
 }
 
+
 void *calculateOffset(void *state) {
   struct applicationState *stateptr = (void *)state;
-  // uint32_t tempHome;
-  // uint32_t tempCurrent;
-  // if (stateptr->currentPosition > 0x16000) {
-  //   tempCurrent = 0xffffffff - stateptr->currentPosition;
-  // } else {
-  //   tempCurrent = stateptr->currentPosition;
-  // }
-  // if (stateptr->homePosition > 0x16000) {
-  //   tempHome = 0xffffffff - stateptr->homePosition;
-  // } else {
-  //   tempHome = stateptr->homePosition;
-  // }
-
 
   if (stateptr->currentPosition > 0x16000) {
     stateptr->changeInAngularPosition = (0xffffffff - stateptr->currentPosition - stateptr->homePosition) / 204.8;
@@ -59,23 +51,9 @@ void *calculateOffset(void *state) {
     stateptr->changeInAngularPosition = stateptr->changeInAngularPosition * (-1);
   }
 
-
-
-  // if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempHome - tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempHome + tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition > 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempCurrent - tempHome) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition > stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempCurrent - tempHome) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition > 0x16000) {
-  //   stateptr->changeInAngularPosition = -(tempHome + tempCurrent) / 204.8;
-  // } else if (stateptr->currentPosition < 0x16000 && stateptr->currentPosition < stateptr->homePosition && stateptr->homePosition < 0x16000) {
-  //   stateptr->changeInAngularPosition = (tempHome - tempCurrent) / 204.8;
-  // }
   return NULL;
 }
+
 
 uint32_t correctPositionValue(uint32_t positionValue) {
   if (positionValue > 0x16000) {
@@ -83,6 +61,7 @@ uint32_t correctPositionValue(uint32_t positionValue) {
   }
   return positionValue;
 }
+
 
 void splitHardStops(void *state) {
   struct applicationState *stateptr = (void *)state;
@@ -113,6 +92,7 @@ void *resetEncoder(void *state) {
 
 void *encoderOnline(void *state) {
   struct applicationState *stateptr = (void *)state;
+  stateptr->motorState = 0;
   reset_command_values(stateptr->commandSequence);
   stateptr->state = 8;
   stateptr->loadStep = 0;
@@ -124,7 +104,7 @@ void *encoderOnline(void *state) {
 
 void *powerOnMotor(void *state) {
   struct applicationState *stateptr = (void *)state;
-  // stateptr->motorState = 1;
+  stateptr->motorState = 1;
   reset_command_values(stateptr->commandSequence);
   stateptr->state = 15;
   stateptr->loadStep = 0;
@@ -152,8 +132,6 @@ void *loadMovementCommand(void *state) {
   convertInputToUartValues((void*)stateptr);
   stateptr->loadStep = 1;
   generateUartCommand((void *)stateptr);
-  // stateptr->motorMovementStartTime = time(NULL);
-  // time(stateptr->motorMovementStartTime);
   writePort(*stateptr->fd, stateptr->commandSequence, sizeof(stateptr->commandSequence));
   return NULL;
 }
@@ -170,8 +148,13 @@ int printCommandQueueValues(uint8_t * command) {
 void *moveMotor(void *state) {
   pthread_mutex_lock(&lock);
   struct applicationState *stateptr = (void *)state;
+  stateptr->motorState = 2;
 
   switch (stateptr->motorProcessIdentifier) {
+    case 0:
+      while (stateptr->motorProcessIdentifier == 0) {
+        NULL;
+      }
     case 1:
       stateptr->desiredOutRate = LIFECYCLE_RATE_OF_ROTATION;
       stateptr->changeInAngularPosition = -LIFECYCLE_DISPLACEMENT;
@@ -185,22 +168,23 @@ void *moveMotor(void *state) {
       stateptr->changeInAngularPosition = -LIFECYCLE_DISPLACEMENT;
       break;
     case 4:
-      collectUserInput((void *)stateptr);
+      // collectUserInput((void *)stateptr);
+      stateptr->desiredOutRate = RATE_OF_ROTATION;
       break;
     case 5:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
-      stateptr->changeInAngularPosition = CCW_BUMP * BUMP_AMPLIFIER;
+      stateptr->changeInAngularPosition = CCW_BUMP_TO_CW_BUMP * BUMP_AMPLIFIER * (-1);
       break;
     case 6:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
-      stateptr->changeInAngularPosition = (CW_BUMP - CCW_BUMP) * BUMP_AMPLIFIER;
+      stateptr->changeInAngularPosition = CCW_BUMP_TO_CW_BUMP * BUMP_AMPLIFIER;
       break;
     case 7:
       stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
       splitHardStops((void *)stateptr);
       break;
     case 8:
-      stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
+      stateptr->desiredOutRate = RATE_OF_ROTATION;
       calculateOffset((void *)stateptr);
       break;
     default:
@@ -215,6 +199,7 @@ void *moveMotor(void *state) {
   loadMovementCommand((void *)stateptr);
   usleep((stateptr->delayCountUsec) + PERFORMANCE_HOLD);
 
+  stateptr->motorState = 1;
   
   pthread_mutex_unlock(&lock);
   return NULL;
@@ -233,14 +218,20 @@ void *functionalManeuver(void *state) {
   stateptr->motorMovementStartTime = time(NULL);
   stateptr->motorProcessIdentifier = 3;
   moveMotor((void *)stateptr);
+  stateptr->motorProcessIdentifier = 0;
+  stateptr->changeInAngularPosition = 0;
+  stateptr->numberOfSteps = 0;
   return NULL;
 }
 
 
 void *performanceManeuver(void *state) {
   struct applicationState *stateptr = (void *)state;
+  stateptr->homeIndex = stateptr->currentIndex;
+  resetEncoder((void *)state);
   stateptr->motorMovementStartTime = time(NULL); 
   stateptr->motorProcessIdentifier = 5;
+  localCurrentPosition = stateptr->currentPosition;
   moveMotor((void *)stateptr);
   stateptr->hardStopMin = stateptr->currentPosition;
   stateptr->motorMovementStartTime = time(NULL); 
@@ -250,8 +241,25 @@ void *performanceManeuver(void *state) {
   stateptr->motorMovementStartTime = time(NULL);
   stateptr->motorProcessIdentifier = 7;
   moveMotor((void *)stateptr);
+  stateptr->motorProcessIdentifier = 0;
+  stateptr->changeInAngularPosition = 0;
+  stateptr->numberOfSteps = 0;
   return NULL;
 }
+
+
+void *stopMotorMovement(void *state) {
+  struct applicationState *stateptr = (void *)state;
+  stateptr->desiredOutRate = PERFORMANCE_RATE_OF_ROTATION;
+  if (stateptr->directionOfRotation == 3) {
+    stateptr->changeInAngularPosition = -0.000001;
+  } else {
+    stateptr->changeInAngularPosition = 0.0;
+  }
+  loadMovementCommand((void *)stateptr);
+  return NULL;
+}
+
 
 void *motorMoveMonitor(void *state) {
   struct applicationState *stateptr = (void *)state;
@@ -291,8 +299,84 @@ void *motorMoveMonitor(void *state) {
         }
       }
       break;
+    case 6:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = LWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 7:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = MWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 8:
+      stateptr->motorProcessIdentifier = 8;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 9:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = SWIR_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
+    case 10:
+      stateptr->motorProcessIdentifier = 4;
+      stateptr->changeInAngularPosition = VIS_DROT;
+      moveMotor((void *)stateptr);
+      stateptr->motorMovementPending = 0;
+      break;
     default:
       break;
+    }
+  }
+  return NULL;
+}
+
+
+// todo: add clearing out of steps, angular displacement, d_rot => readUART.c values
+void *motorMovementOverwatch(void *state) {
+  struct applicationState *stateptr = (void *)state;
+  
+  while(stateptr->applicationActive) {
+
+    if (stateptr->abort) {
+      stopMotorMovement((void *)stateptr);
+      stateptr->abort = 0;
+    }
+
+    if (stateptr->motorProcessIdentifier == 5) {
+      while (stateptr->motorProcessIdentifier == 5 && stateptr->currentPosition == localCurrentPosition) {
+        delay(100000);
+      }
+      while (stateptr->motorProcessIdentifier == 5 && stateptr->currentPosition > stateptr->lastPosition) {
+        delay(100000);
+      }
+      while (stateptr->motorProcessIdentifier == 5 && stateptr->currentPosition < stateptr->lastPosition) {
+        delay(100);
+      }
+      stopMotorMovement((void *)stateptr);
+      localCurrentPosition = stateptr->currentPosition;
+      stateptr->motorProcessIdentifier = 0;
+    }
+
+    if (stateptr->motorProcessIdentifier == 6) {
+      while (stateptr->motorProcessIdentifier == 6 && stateptr->currentPosition == localCurrentPosition) {
+        delay(100000);
+      }
+      while (stateptr->motorProcessIdentifier == 6 && stateptr->currentPosition > 0x12000) {
+        delay(100000);
+      }
+      while (stateptr->motorProcessIdentifier == 6 && stateptr->currentPosition < stateptr->lastPosition) {
+        delay(100000);
+      }
+      while (stateptr->motorProcessIdentifier == 6 && stateptr->currentPosition > stateptr->lastPosition) {
+        delay(100000);
+      }
+      stopMotorMovement((void *)stateptr);
+      stateptr->motorProcessIdentifier = 0;
     }
   }
   return NULL;
